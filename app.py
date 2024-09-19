@@ -1,15 +1,19 @@
 from flask import Flask, request, jsonify, render_template
-from PIL import Image, UnidentifiedImageError
+from PIL import Image
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import io
-import os
-import time
-import torch
 
 app = Flask(__name__)
 
+# Lazy load TrOCR model (smaller version)
 processor = None
 model = None
+
+def load_trocr_model():
+    global processor, model
+    if processor is None or model is None:
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
+        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
 
 @app.route('/')
 def index():
@@ -17,53 +21,40 @@ def index():
 
 @app.route('/extract', methods=['POST'])
 def extract_text():
-    global processor, model
-
-    start_time = time.time()  # Start profiling time
-
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
-    # Lazy load the model and processor only when necessary
-    if processor is None or model is None:
-        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
-        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
-        
-        # Quantize the model to reduce memory usage and speed up inference
-        model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-        model = model.to('cpu')
+    # Lazy load the model when needed
+    load_trocr_model()
 
-    # Retrieve the file and process it as an image
     file = request.files['file']
-    try:
-        img = Image.open(io.BytesIO(file.read())).convert("RGB")
-    except UnidentifiedImageError:
-        return jsonify({'error': 'Invalid image format.'}), 400
-    except Exception as e:
-        return jsonify({'error': f'Error loading image: {str(e)}'}), 500
+    img = Image.open(io.BytesIO(file.read())).convert("RGB")
 
-    # Resize image to reduce memory usage and speed up processing
-    max_size = (256, 256)  # Further reduce image size
-    img.thumbnail(max_size, Image.LANCZOS)
-
-    print(f"Image processing time: {time.time() - start_time} seconds")
-
-    try:
-        # Process the image using TrOCR
-        pixel_values = processor(images=img, return_tensors="pt").pixel_values
-
-        with torch.no_grad():  # Disable gradient computation to save memory
-            generated_ids = model.generate(pixel_values)
-
-        predicted_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-    except Exception as e:
-        return jsonify({'error': f'Error during model inference: {str(e)}'}), 500
-
-    print(f"Model inference time: {time.time() - start_time} seconds")
-    print(f"Total request handling time: {time.time() - start_time} seconds")
+    # Process the image using TrOCR
+    pixel_values = processor(images=img, return_tensors="pt").pixel_values
+    generated_ids = model.generate(pixel_values)
+    predicted_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
     return jsonify({'text': predicted_text})
 
+@app.route('/batch_extract', methods=['POST'])
+def batch_extract_text():
+    # Batch processing to extract words
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({'error': 'No files uploaded'}), 400
+
+    load_trocr_model()
+    results = []
+
+    for file in files:
+        img = Image.open(io.BytesIO(file.read())).convert("RGB")
+        pixel_values = processor(images=img, return_tensors="pt").pixel_values
+        generated_ids = model.generate(pixel_values)
+        predicted_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        results.append(predicted_text)
+
+    return jsonify({'texts': results})
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable from Render
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True, use_reloader=False, port=5001)
