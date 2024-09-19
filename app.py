@@ -2,12 +2,12 @@ from flask import Flask, request, jsonify, render_template
 from PIL import Image
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import io
+import os
 
 app = Flask(__name__)
 
-# Initialize TrOCR model
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten")
+processor = None
+model = None
 
 @app.route('/')
 def index():
@@ -15,8 +15,15 @@ def index():
 
 @app.route('/extract', methods=['POST'])
 def extract_text():
+    global processor, model
+
     if 'file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
+
+    # Lazy load the model and processor only when necessary
+    if processor is None or model is None:
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
+        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
 
     file = request.files['file']
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
@@ -29,4 +36,5 @@ def extract_text():
     return jsonify({'text': predicted_text})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable from Render
+    app.run(host='0.0.0.0', port=port)
