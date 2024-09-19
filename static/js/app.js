@@ -25,10 +25,26 @@ function handleImageUpload(event) {
     const ctx = canvas.getContext('2d');
 
     img.onload = function () {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.drawImage(img, 0, 0);
+        // Resize image to a reasonable size
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+        }
+        if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.drawImage(img, 0, 0, width, height);
+        preprocessImage(canvas);
         uploadedImage = img;
         detectedWords = [];
         modifiedWords = []; // Clear any modifications on a new upload
@@ -82,6 +98,7 @@ document.getElementById('extractButton').addEventListener('click', async () => {
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const wordBlobs = [];
 
     for (let i = 0; i < detectedWords.length; i++) {
         const word = detectedWords[i];
@@ -96,11 +113,13 @@ document.getElementById('extractButton').addEventListener('click', async () => {
         croppedCanvas.height = height;
         croppedCtx.drawImage(canvas, bbox.x0, bbox.y0, width, height, 0, 0, width, height);
 
-        croppedCanvas.toBlob(async (blob) => {
-            // Send the cropped word image to the TrOCR backend
-            await sendCroppedWordToBackend(blob, i);
-        });
+        // Convert to Blob and store it
+        const blob = await new Promise(resolve => croppedCanvas.toBlob(resolve));
+        wordBlobs.push(blob);
     }
+
+    // Send words to backend in a single batch
+    await sendBatchWordsToBackend(wordBlobs);
 });
 
 // Function to preprocess the image (Grayscale + Adaptive Thresholding)
@@ -293,35 +312,28 @@ function redrawWords() {
     });
 }
 
-async function sendCroppedWordToBackend(wordImageBlob, wordIndex) {
+// Function to send a batch of cropped words to the backend
+async function sendBatchWordsToBackend(wordBlobs) {
     const formData = new FormData();
-    formData.append('file', wordImageBlob);
 
-    try {
-        const response = await fetch('/extract', {
-            method: 'POST',
-            body: formData
-        });
-    
-        if (!response.ok) {
-            console.log('Server response:', response);
-            throw new Error(`Server error: ${response.status}`);
-        }
-    
-        const data = await response.json();
-        console.log('Data from server:', data);  // Log server response
-    
-        const predictedWords = document.getElementById('predictedWords');
-        const wordItem = document.createElement("li");
-        wordItem.textContent = `Word ${wordIndex + 1}: ${data.text}`;
+    wordBlobs.forEach((blob, index) => {
+        formData.append(`files`, blob, `word_${index + 1}.jpg`);
+    });
+
+    const response = await fetch('/batch_extract', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await response.json();
+    const predictedWords = document.getElementById('predictedWords');
+
+    data.texts.forEach((text, index) => {
+        const wordItem = document.createElement('li');
+        wordItem.textContent = `Word ${index + 1}: ${text}`;
         predictedWords.appendChild(wordItem);
-    } catch (error) {
-        console.error('Error during extraction:', error);
-        alert('An error occurred during extraction. Please try again.');
-    }
-    
+    });
 }
-
 
 // Additional features for adding and deleting boxes manually
 document.getElementById('addBoxButton').addEventListener('click', () => {
@@ -477,44 +489,6 @@ async function saveWordsAsZip() {
             }, 'image/jpeg');
         });
     }
-
-    let slideIndex = 0;
-    showSlides();
-
-    function showSlides() {
-        let i;
-        let slides = document.getElementsByClassName("slides");
-        let dots = document.getElementsByClassName("dot");
-
-        // Hide all slides
-        for (i = 0; i < slides.length; i++) {
-            slides[i].style.display = "none";
-        }
-
-        // Remove "active" class from all dots
-        for (i = 0; i < dots.length; i++) {
-            dots[i].className = dots[i].className.replace(" active", "");
-        }
-
-        // Move to the next slide
-        slideIndex++;
-        if (slideIndex > slides.length) {slideIndex = 1}
-
-        // Show the current slide
-        slides[slideIndex - 1].style.display = "block";
-
-        // Highlight the active dot
-        dots[slideIndex - 1].className += " active";
-
-        // Set timer for automatic slide transition
-        setTimeout(showSlides, 3000); // Change slide every 3 seconds
-    }
-
-    function currentSlide(n) {
-        slideIndex = n;
-        showSlides();
-    }
-
 
     // Generate the ZIP file and trigger the download
     zip.generateAsync({ type: 'blob' }).then((content) => {
