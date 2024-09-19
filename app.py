@@ -35,14 +35,14 @@ def extract_text():
     # Retrieve the file and process it as an image
     file = request.files['file']
     try:
-        img = Image.open(io.BytesIO(file.read())).convert("RGB")
+        img = Image.open(io.BytesIO(file.read())).convert("L")  # Convert to grayscale to reduce size
     except UnidentifiedImageError:
         return jsonify({'error': 'Invalid image format.'}), 400
     except Exception as e:
         return jsonify({'error': f'Error loading image: {str(e)}'}), 500
 
     # Resize image to reduce memory usage and speed up processing
-    max_size = (512, 512)
+    max_size = (384, 384)  # You can experiment with smaller sizes
     img.thumbnail(max_size, Image.LANCZOS)
 
     print(f"Image processing time: {time.time() - start_time} seconds")
