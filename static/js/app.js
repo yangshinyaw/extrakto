@@ -302,12 +302,15 @@ async function sendCroppedWordToBackend(wordImageBlob, wordIndex) {
             method: 'POST',
             body: formData
         });
-
+    
         if (!response.ok) {
+            console.log('Server response:', response);
             throw new Error(`Server error: ${response.status}`);
         }
-
+    
         const data = await response.json();
+        console.log('Data from server:', data);  // Log server response
+    
         const predictedWords = document.getElementById('predictedWords');
         const wordItem = document.createElement("li");
         wordItem.textContent = `Word ${wordIndex + 1}: ${data.text}`;
@@ -316,6 +319,7 @@ async function sendCroppedWordToBackend(wordImageBlob, wordIndex) {
         console.error('Error during extraction:', error);
         alert('An error occurred during extraction. Please try again.');
     }
+    
 }
 
 
