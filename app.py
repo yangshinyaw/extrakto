@@ -26,8 +26,9 @@ def extract_text():
 
     # Lazy load the model and processor only when necessary
     if processor is None or model is None:
-        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
-        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
+        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten")
+
 
         # Quantize the model to reduce memory usage and speed up inference
         model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
@@ -64,5 +65,6 @@ def extract_text():
     return jsonify({'text': predicted_text})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable from Render
+    port = int(os.environ.get('PORT', 5000))  # Check PORT env variable
+    print(f"Running on port {port}")
     app.run(host='0.0.0.0', port=port)
