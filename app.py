@@ -26,24 +26,24 @@ def extract_text():
 
     # Lazy load the model and processor only when necessary
     if processor is None or model is None:
-        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten")
-
-
+        processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
+        model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
+        
         # Quantize the model to reduce memory usage and speed up inference
         model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
+        model = model.to('cpu')
 
     # Retrieve the file and process it as an image
     file = request.files['file']
     try:
-        img = Image.open(io.BytesIO(file.read())).convert("L")  # Convert to grayscale to reduce size
+        img = Image.open(io.BytesIO(file.read())).convert("RGB")
     except UnidentifiedImageError:
         return jsonify({'error': 'Invalid image format.'}), 400
     except Exception as e:
         return jsonify({'error': f'Error loading image: {str(e)}'}), 500
 
     # Resize image to reduce memory usage and speed up processing
-    max_size = (384, 384)  # You can experiment with smaller sizes
+    max_size = (256, 256)  # Further reduce image size
     img.thumbnail(max_size, Image.LANCZOS)
 
     print(f"Image processing time: {time.time() - start_time} seconds")
@@ -65,6 +65,5 @@ def extract_text():
     return jsonify({'text': predicted_text})
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))  # Check PORT env variable
-    print(f"Running on port {port}")
+    port = int(os.environ.get('PORT', 5000))  # Use the PORT env variable from Render
     app.run(host='0.0.0.0', port=port)
