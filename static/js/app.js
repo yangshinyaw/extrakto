@@ -293,22 +293,31 @@ function redrawWords() {
     });
 }
 
-// Function to send cropped word to backend
 async function sendCroppedWordToBackend(wordImageBlob, wordIndex) {
     const formData = new FormData();
     formData.append('file', wordImageBlob);
 
-    const response = await fetch('/extract', {
-        method: 'POST',
-        body: formData
-    });
+    try {
+        const response = await fetch('/extract', {
+            method: 'POST',
+            body: formData
+        });
 
-    const data = await response.json();
-    const predictedWords = document.getElementById('predictedWords');
-    const wordItem = document.createElement("li");
-    wordItem.textContent = `Word ${wordIndex + 1}: ${data.text}`;
-    predictedWords.appendChild(wordItem);
+        if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const predictedWords = document.getElementById('predictedWords');
+        const wordItem = document.createElement("li");
+        wordItem.textContent = `Word ${wordIndex + 1}: ${data.text}`;
+        predictedWords.appendChild(wordItem);
+    } catch (error) {
+        console.error('Error during extraction:', error);
+        alert('An error occurred during extraction. Please try again.');
+    }
 }
+
 
 // Additional features for adding and deleting boxes manually
 document.getElementById('addBoxButton').addEventListener('click', () => {

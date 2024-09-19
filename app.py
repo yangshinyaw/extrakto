@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import io
 import os
@@ -31,26 +31,34 @@ def extract_text():
 
         # Quantize the model to reduce memory usage and speed up inference
         model = torch.quantization.quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
-    
+
+    # Retrieve the file and process it as an image
     file = request.files['file']
-    img = Image.open(io.BytesIO(file.read())).convert("RGB")
+    try:
+        img = Image.open(io.BytesIO(file.read())).convert("RGB")
+    except UnidentifiedImageError:
+        return jsonify({'error': 'Invalid image format.'}), 400
+    except Exception as e:
+        return jsonify({'error': f'Error loading image: {str(e)}'}), 500
 
     # Resize image to reduce memory usage and speed up processing
     max_size = (512, 512)
-    img.thumbnail(max_size, Image.LANCZOS)  # Use LANCZOS instead of ANTIALIAS
+    img.thumbnail(max_size, Image.LANCZOS)
 
     print(f"Image processing time: {time.time() - start_time} seconds")
 
-    # Process the image using TrOCR
-    pixel_values = processor(images=img, return_tensors="pt").pixel_values
+    try:
+        # Process the image using TrOCR
+        pixel_values = processor(images=img, return_tensors="pt").pixel_values
 
-    with torch.no_grad():  # Disable gradient computation to save memory
-        generated_ids = model.generate(pixel_values)
+        with torch.no_grad():  # Disable gradient computation to save memory
+            generated_ids = model.generate(pixel_values)
+
+        predicted_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+    except Exception as e:
+        return jsonify({'error': f'Error during model inference: {str(e)}'}), 500
 
     print(f"Model inference time: {time.time() - start_time} seconds")
-
-    predicted_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
-
     print(f"Total request handling time: {time.time() - start_time} seconds")
 
     return jsonify({'text': predicted_text})
