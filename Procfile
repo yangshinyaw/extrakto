@@ -1,4 +1,4 @@
-gunicorn app:app --workers 1
+web gunicorn app:app
 
 
 
