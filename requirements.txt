@@ -2,15 +2,15 @@ Flask==3.0.3
 Flask-Cors==4.0.1
 Flask-SQLAlchemy==3.1.1
 Pillow==10.2.0
-transformers==4.44.2
-torch==2.2.2
+transformers==4.44.2  # Adjust to 4.45.x if needed
+torch==2.0.1  # Adjust for compatibility if needed
 opencv-python==4.10.0.84
 python-dotenv==1.0.1
 tqdm==4.66.2
 requests==2.32.3
-openpyxl
-numpy==2.0.0
-sentencepiece
+openpyxl==3.1.2
+numpy==1.24.4  # Downgrade to avoid issues with NumPy 2.0
+sentencepiece==0.1.99
 pybind11>=2.12
-protobuf
+protobuf==4.24.0  # Ensure compatibility with transformers
 gunicorn==23.0.0
