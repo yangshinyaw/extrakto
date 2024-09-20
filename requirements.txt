@@ -4,6 +4,7 @@ transformers
 torch
 sentencepiece
 protobuf
+openpyxl
 gunicorn
 
 
