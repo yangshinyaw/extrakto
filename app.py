@@ -12,9 +12,14 @@ app = Flask(__name__)
 # Set a file size limit of 16 MB for uploads
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Initialize TrOCR model (using a smaller version to reduce memory usage)
+# Initialize TrOCR model
 processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
 model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
+
+# Error handler for file size exceeding limit
+@app.errorhandler(413)
+def handle_large_file(error):
+    return jsonify({'error': 'File size exceeds the 16MB limit'}), 413
 
 @app.route('/')
 def index():
@@ -26,11 +31,12 @@ def extract_text():
         return jsonify({'error': 'No file uploaded'}), 400
 
     file = request.files['file']
-    img = Image.open(io.BytesIO(file.read())).convert("RGB")
-
-    # Resize the image to reduce memory usage
-    max_size = (1000, 1000)  # Set a maximum size (1000x1000) to limit the image dimensions
-    img.thumbnail(max_size)
+    try:
+        img = Image.open(io.BytesIO(file.read())).convert("RGB")
+        max_size = (1000, 1000)
+        img.thumbnail(max_size)
+    except Exception as e:
+        return jsonify({'error': f'Failed to process image: {str(e)}'}), 400
 
     # Process the image using TrOCR
     pixel_values = processor(images=img, return_tensors="pt").pixel_values
@@ -46,32 +52,19 @@ def save_to_excel():
         return jsonify({'error': 'No words provided'}), 400
 
     words = data['words']
-    combined_words = " ".join(words)  # Merge words into a single line
+    combined_words = " ".join(words)
 
-    # Define the path to the Excel file
-    excel_file_path = 'extracted_words.xlsx'
+    # Create a new Excel workbook in a temporary file
+    with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp_file:
+        excel_file_path = tmp_file.name
 
-    # Check if the Excel file already exists
-    if os.path.exists(excel_file_path):
-        # Open the existing Excel file
-        wb = openpyxl.load_workbook(excel_file_path)
-        ws = wb.active
-    else:
-        # Create a new Excel file and set the active sheet
         wb = Workbook()
         ws = wb.active
         ws.title = "Extracted Words"
+        ws.cell(row=1, column=1, value=combined_words)
 
-    # Find the next empty row
-    next_row = ws.max_row + 1
+        wb.save(excel_file_path)
 
-    # Write the merged words to the next row
-    ws.cell(row=next_row, column=1, value=combined_words)
-
-    # Save the Excel file
-    wb.save(excel_file_path)
-
-    # Return the Excel file as a response
     return send_file(excel_file_path, as_attachment=True, download_name="extracted_words.xlsx")
 
 if __name__ == '__main__':
