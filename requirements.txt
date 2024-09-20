@@ -12,4 +12,5 @@ openpyxl
 numpy==2.0.0
 sentencepiece
 pybind11>=2.12
+protobuf
 gunicorn==23.0.0
