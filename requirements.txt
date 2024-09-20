@@ -9,4 +9,7 @@ python-dotenv==1.0.1
 tqdm==4.66.2
 requests==2.32.3
 openpyxl
+numpy==2.0.0
+sentencepiece
+pybind11>=2.12
 gunicorn==23.0.0
