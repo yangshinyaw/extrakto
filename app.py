@@ -9,9 +9,12 @@ import tempfile
 
 app = Flask(__name__)
 
-# Initialize TrOCR model
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-base-handwritten")
-model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-base-handwritten")
+# Set a file size limit of 16 MB for uploads
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+# Initialize TrOCR model (using a smaller version to reduce memory usage)
+processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
+model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
 
 @app.route('/')
 def index():
@@ -24,6 +27,10 @@ def extract_text():
 
     file = request.files['file']
     img = Image.open(io.BytesIO(file.read())).convert("RGB")
+
+    # Resize the image to reduce memory usage
+    max_size = (1000, 1000)  # Set a maximum size (1000x1000) to limit the image dimensions
+    img.thumbnail(max_size)
 
     # Process the image using TrOCR
     pixel_values = processor(images=img, return_tensors="pt").pixel_values
