@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Word Detection and TrOCR App</title>
     <style>
-        /* Basic styling */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -14,7 +13,6 @@
             color: #333;
         }
 
-        /* Header with navigation */
         header {
             background-color: #333;
             color: #fff;
@@ -48,62 +46,6 @@
             border-radius: 4px;
         }
 
-        /* Slider Styles */
-        .slider {
-            position: relative;
-            max-width: 100%;
-            margin: auto;
-            overflow: hidden;
-            text-align: center;
-            margin-top: 60px; /* Ensure the slider doesn't overlap the header */
-        }
-
-        .slides {
-            display: none;
-            position: relative;
-            width: 100%;
-            height: auto;
-        }
-
-        .slide img {
-            width: 100%;
-            height: auto;
-        }
-
-        /* Fade effect */
-        .fade {
-            animation: fade 1.5s ease-in-out;
-        }
-
-        @keyframes fade {
-            from { opacity: 0.4 }
-            to { opacity: 1 }
-        }
-
-        /* Dots below the slider */
-        .dots {
-            text-align: center;
-            position: absolute;
-            bottom: 10px;
-            width: 100%;
-        }
-
-        .dot {
-            height: 15px;
-            width: 15px;
-            margin: 0 5px;
-            background-color: #bbb;
-            border-radius: 50%;
-            display: inline-block;
-            transition: background-color 0.6s ease;
-            cursor: pointer;
-        }
-
-        .dot.active {
-            background-color: #4A90E2;
-        }
-
-        /* Hero section */
         .hero {
             background: linear-gradient(45deg, #4A90E2, #357ABD);
             color: white;
@@ -137,14 +79,12 @@
             color: white;
         }
 
-        /* Main container */
         main {
             margin: 60px auto;
             max-width: 1200px;
             padding: 20px;
         }
 
-        /* Word Detection UI */
         #container {
             display: flex;
             justify-content: center;
@@ -165,7 +105,6 @@
             border-radius: 5px;
         }
 
-        /* Word detection buttons */
         #controls {
             margin-top: 20px;
             display: flex;
@@ -190,7 +129,6 @@
             background-color: #357ABD;
         }
 
-        /* Feature Section */
         .features {
             display: flex;
             justify-content: space-around;
@@ -207,7 +145,6 @@
             margin-bottom: 20px;
         }
 
-        /* Footer */
         footer {
             background-color: #333;
             color: white;
@@ -222,9 +159,8 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header>
-        <div class="logo">Extractor</div>
+        <div class="logo">Extrakto Word App</div>
         <nav>
             <a href="#">Home</a>
             <a href="#">About</a>
@@ -234,42 +170,32 @@
         </nav>
     </header>
 
-    <!-- Hero Section -->
     <div class="hero">
         <h1>Word Detection and TrOCR Extraction</h1>
         <p>The Future of Text Recognition and Extraction.</p>
         <button>Get Started</button>
     </div>
 
-    <!-- Main Content -->
     <main>
-        <!-- File input -->
-        <input type="file" id="fileInput" accept="image/*">
-        
-        <!-- Canvas container -->
+        <input type="file" id="fileInput" accept="image/*" hidden>
         <div id="container">
             <canvas id="canvas"></canvas>
         </div>
 
-        <!-- Word detection buttons -->
         <div id="controls">
-            <button id="detectButton">Detect Words</button>
-            <button id="extractButton">Extract Words</button>
-            <button id="addBoxButton">Add Box</button>
-            <button id="deleteBoxButton">Delete Box</button>
-            <button id="saveZipButton">Save Words as ZIP</button>
+            <button id="newUploadButton">New Upload</button>
+            <button id="detectButton" disabled>Detect Words</button>
+            <button id="extractButton" disabled>Extract Words</button>
+            <button id="saveZipButton" disabled>Save Words as ZIP</button>
+            <button id="saveExcelButton" disabled>Save to Excel</button>
         </div>
 
-        <!-- Word count display -->
         <div id="wordCount">Words Detected: 0</div>
-
-        <!-- Extracted words output -->
         <div id="output">
             <h2>Extracted Words:</h2>
             <ul id="predictedWords"></ul>
         </div>
 
-        <!-- Feature Section -->
         <div class="features">
             <div>
                 <img src="static/images/detect.png" alt="Detect Icon">
@@ -284,14 +210,11 @@
         </div>
     </main>
 
-    <!-- Footer -->
     <footer>
         <p>&copy; 2024 ExtractorDetector Word App | <a href="#">Privacy</a> | <a href="#">Terms</a></p>
     </footer>
-
-    <!-- JSZip library and app logic -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
     <script src="static/js/app.js"></script>
-
 </body>
 </html>
