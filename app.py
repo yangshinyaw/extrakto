@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify, render_template, send_file
+from flask import Flask, request, jsonify, render_template, send_file, g
 from PIL import Image
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 import io
@@ -12,9 +12,12 @@ app = Flask(__name__)
 # Set a file size limit of 16 MB for uploads
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 
-# Initialize TrOCR model
-processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
-model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
+# Initialize TrOCR model on first use, using Flask's global `g` object for persistence
+def get_trocr_model():
+    if 'trocr_model' not in g:
+        g.processor = TrOCRProcessor.from_pretrained("microsoft/trocr-small-handwritten")
+        g.model = VisionEncoderDecoderModel.from_pretrained("microsoft/trocr-small-handwritten")
+    return g.processor, g.model
 
 # Error handler for file size exceeding limit
 @app.errorhandler(413)
@@ -37,6 +40,9 @@ def extract_text():
         img.thumbnail(max_size)
     except Exception as e:
         return jsonify({'error': f'Failed to process image: {str(e)}'}), 400
+
+    # Retrieve the model and processor
+    processor, model = get_trocr_model()
 
     # Process the image using TrOCR
     pixel_values = processor(images=img, return_tensors="pt").pixel_values
@@ -65,7 +71,12 @@ def save_to_excel():
 
         wb.save(excel_file_path)
 
-    return send_file(excel_file_path, as_attachment=True, download_name="extracted_words.xlsx")
+    response = send_file(excel_file_path, as_attachment=True, download_name="extracted_words.xlsx")
+    
+    # Delete the file after sending it to avoid storage accumulation
+    os.remove(excel_file_path)
+
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True, use_reloader=False, port=5001)
